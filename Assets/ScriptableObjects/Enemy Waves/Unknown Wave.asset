@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0e281819036e9064b9a1e124e70e5c4c, type: 3}
+  m_Name: Unknown Wave
+  m_EditorClassIdentifier: 
+  strength: 5
+  enemies:
+  - {fileID: 1070388746329371727, guid: 66a7140f349cee04ca743a1156a0dc18, type: 3}
+  - {fileID: 1070388746329371727, guid: 66a7140f349cee04ca743a1156a0dc18, type: 3}
+  - {fileID: 2578639256575580897, guid: dc7383f1b00e71c41aab08a4c1717c4a, type: 3}
+  - {fileID: 2578639256575580897, guid: dc7383f1b00e71c41aab08a4c1717c4a, type: 3}
+  - {fileID: 2578639256575580897, guid: dc7383f1b00e71c41aab08a4c1717c4a, type: 3}
+  - {fileID: 2578639256575580897, guid: dc7383f1b00e71c41aab08a4c1717c4a, type: 3}
+  requiredStrength: 10
