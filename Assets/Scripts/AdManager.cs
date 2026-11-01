@@ -40,6 +40,7 @@ public class AdManager : MonoBehaviour
 
 	private void InitializeLevelPlay()
 	{
+#if UNITY_ANDROID || UNITY_IOS
 		string appKey = "";
 
 #if UNITY_ANDROID
@@ -68,6 +69,7 @@ public class AdManager : MonoBehaviour
 		{
 			Debug.LogError($"LevelPlay initialization failed: {e.Message}");
 		}
+#endif
 	}
 
 	private void OnLevelPlayInitialized(LevelPlayConfiguration configuration)

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
 [RequireComponent(typeof(Camera))]
 public class CameraScaler : MonoBehaviour
@@ -18,20 +19,46 @@ public class CameraScaler : MonoBehaviour
 
     private float orthoSize;
 
+    private bool IsSupportedPlatform =>
+        Application.platform == RuntimePlatform.WebGLPlayer ||
+        Application.platform == RuntimePlatform.WindowsPlayer ||
+        Application.platform == RuntimePlatform.OSXPlayer ||
+        Application.platform == RuntimePlatform.LinuxPlayer ||
+        Application.isEditor;
+
     protected void Awake()
     {
-        // Only initialize on WebGL platform
-        if (Application.platform == RuntimePlatform.WebGLPlayer)
+        if (IsSupportedPlatform)
         {
             cam = GetComponent<Camera>();
             orthoSize = cam.orthographicSize;
+            UpdateCamSize();
+            lastWidth = Screen.width;
+            lastHeight = Screen.height;
+        }
+    }
+
+    private void OnEnable()
+    {
+        RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
+    }
+
+    private void OnDisable()
+    {
+        RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
+    }
+
+    private void OnBeginCameraRendering(ScriptableRenderContext context, Camera renderingCamera)
+    {
+        if (renderingCamera == cam && (cam.rect.width < 1f || cam.rect.height < 1f))
+        {
+            GL.Clear(true, true, Color.black);
         }
     }
 
     protected void Update()
     {
-        // Only execute on WebGL platform
-        if (Application.platform != RuntimePlatform.WebGLPlayer)
+        if (!IsSupportedPlatform || cam == null)
             return;
 
         if (Screen.width != lastWidth || Screen.height != lastHeight)

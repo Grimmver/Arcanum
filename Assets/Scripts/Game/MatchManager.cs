@@ -68,6 +68,8 @@ public class MatchManager : MonoBehaviour
 	private Vector2 touchStart;
 	private bool isSwiping = false;
 	private GameObject selectedElement = null;
+	private GameObject clickedElement = null;
+	private Vector3 clickedElementOriginalScale = Vector3.one;
 
 	private bool canInteract = true;
 
@@ -406,57 +408,158 @@ public class MatchManager : MonoBehaviour
 		HandleSwipeInput();
 	}
 
-	void HandleSwipeInput()
+	private GameObject GetTileObjectAtPosition(Vector2 worldPos)
 	{
-		if (!canInteract || debugOverlayCount > 0 || UI.ShopCanvas.Instance.IsOpen || UI.SettingsCanvas.Instance.IsOpen || UI.RewardsCanvas.Instance.IsOpen || cntAnimating > 0)
-			return;
-
-		if (Input.GetMouseButtonDown(0))
+		Collider2D[] hits = Physics2D.OverlapPointAll(worldPos);
+		foreach (Collider2D col in hits)
 		{
-			Vector2 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-			RaycastHit2D hit = Physics2D.Raycast(mousePosition, Vector2.zero);
-
-			if (hit.collider != null)
+			if (col != null && col.TryGetComponent(out Tile _))
 			{
-				selectedElement = hit.collider.gameObject;
-				touchStart = mousePosition;
-				isSwiping = true;
+				return col.gameObject;
 			}
 		}
-		else if (Input.GetMouseButtonUp(0) && isSwiping && selectedElement != null)
+		return null;
+	}
+
+	private void SetClickedElement(GameObject element)
+	{
+		ClearClickedElement();
+		if (element == null)
+			return;
+
+		clickedElement = element;
+		if (element.TryGetComponent(out Tile tile) && tile.originalScale != Vector3.zero)
 		{
+			clickedElementOriginalScale = tile.originalScale;
+		}
+		else
+		{
+			clickedElementOriginalScale = element.transform.localScale;
+		}
+		element.transform.localScale = clickedElementOriginalScale * 1.15f;
+	}
 
-			Vector2 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-			Vector2 swipeDelta = mousePosition - touchStart;
+	private void ClearClickedElement()
+	{
+		if (clickedElement != null)
+		{
+			clickedElement.transform.localScale = clickedElementOriginalScale;
+			clickedElement = null;
+		}
+	}
 
-			if (swipeDelta.magnitude > swipeThreshold)
+	private bool AreAdjacentTiles(GameObject first, GameObject second, out int deltaX, out int deltaY)
+	{
+		deltaX = 0;
+		deltaY = 0;
+		if (first == null || second == null)
+			return false;
+
+		if (!first.TryGetComponent(out Tile tile1) || !second.TryGetComponent(out Tile tile2))
+			return false;
+
+		deltaX = tile2.x - tile1.x;
+		deltaY = tile2.y - tile1.y;
+		return Mathf.Abs(deltaX) + Mathf.Abs(deltaY) == 1;
+	}
+
+	private void SwapByDelta(GameObject element, Vector2 swipeDelta)
+	{
+		if (Mathf.Abs(swipeDelta.x) > Mathf.Abs(swipeDelta.y))
+		{
+			TrySwapElements(element, swipeDelta.x > 0 ? 1 : -1, 0);
+		}
+		else
+		{
+			TrySwapElements(element, 0, swipeDelta.y > 0 ? 1 : -1);
+		}
+	}
+
+	void HandleSwipeInput()
+	{
+		if (!canInteract || debugOverlayCount > 0 ||
+			(UI.ShopCanvas.Instance != null && UI.ShopCanvas.Instance.IsOpen) ||
+			(UI.SettingsCanvas.Instance != null && UI.SettingsCanvas.Instance.IsOpen) ||
+			(UI.RewardsCanvas.Instance != null && UI.RewardsCanvas.Instance.IsOpen) ||
+			(UI.LoseCanvas.Instance != null && UI.LoseCanvas.Instance.IsOpen) ||
+			(UI.FinalLoseCanvas.Instance != null && UI.FinalLoseCanvas.Instance.IsOpen) ||
+			cntAnimating > 0)
+		{
+			return;
+		}
+
+		if (Input.touchCount == 0)
+		{
+			if (Input.GetMouseButtonDown(0))
 			{
-				if (Mathf.Abs(swipeDelta.x) > Mathf.Abs(swipeDelta.y))
+				Vector2 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+				GameObject hitTile = GetTileObjectAtPosition(mousePosition);
+
+				if (hitTile != null)
 				{
-					if (swipeDelta.x > 0)
+					if (clickedElement != null && clickedElement != hitTile && AreAdjacentTiles(clickedElement, hitTile, out int dxSwap, out int dySwap))
 					{
-						TrySwapElements(selectedElement, 1, 0);
+						GameObject sourceTile = clickedElement;
+						ClearClickedElement();
+						isSwiping = false;
+						selectedElement = null;
+						TrySwapElements(sourceTile, dxSwap, dySwap);
+						return;
 					}
-					else
-					{
-						TrySwapElements(selectedElement, -1, 0);
-					}
+
+					selectedElement = hitTile;
+					touchStart = mousePosition;
+					isSwiping = true;
 				}
 				else
 				{
-					if (swipeDelta.y > 0)
+					ClearClickedElement();
+					isSwiping = false;
+					selectedElement = null;
+				}
+			}
+			else if (Input.GetMouseButton(0) && isSwiping && selectedElement != null)
+			{
+				Vector2 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+				Vector2 swipeDelta = mousePosition - touchStart;
+				float dragTriggerThreshold = Mathf.Min(swipeThreshold, cellSize * 0.65f);
+
+				if (swipeDelta.magnitude >= dragTriggerThreshold)
+				{
+					GameObject elementToSwap = selectedElement;
+					ClearClickedElement();
+					isSwiping = false;
+					selectedElement = null;
+					SwapByDelta(elementToSwap, swipeDelta);
+				}
+			}
+			else if (Input.GetMouseButtonUp(0) && isSwiping && selectedElement != null)
+			{
+				Vector2 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+				Vector2 swipeDelta = mousePosition - touchStart;
+				float releaseTriggerThreshold = Mathf.Min(swipeThreshold, cellSize * 0.3f);
+
+				if (swipeDelta.magnitude >= releaseTriggerThreshold)
+				{
+					GameObject elementToSwap = selectedElement;
+					ClearClickedElement();
+					SwapByDelta(elementToSwap, swipeDelta);
+				}
+				else
+				{
+					if (clickedElement == selectedElement)
 					{
-						TrySwapElements(selectedElement, 0, 1);
+						ClearClickedElement();
 					}
 					else
 					{
-						TrySwapElements(selectedElement, 0, -1);
+						SetClickedElement(selectedElement);
 					}
 				}
-			}
 
-			isSwiping = false;
-			selectedElement = null;
+				isSwiping = false;
+				selectedElement = null;
+			}
 		}
 
 		if (Input.touchCount > 0)
@@ -466,11 +569,11 @@ public class MatchManager : MonoBehaviour
 			if (touch.phase == TouchPhase.Began)
 			{
 				Vector2 touchPosition = Camera.main.ScreenToWorldPoint(touch.position);
-				RaycastHit2D hit = Physics2D.Raycast(touchPosition, Vector2.zero);
+				GameObject hitTile = GetTileObjectAtPosition(touchPosition);
 
-				if (hit.collider != null)
+				if (hitTile != null)
 				{
-					selectedElement = hit.collider.gameObject;
+					selectedElement = hitTile;
 					touchStart = touchPosition;
 					isSwiping = true;
 				}
@@ -482,28 +585,8 @@ public class MatchManager : MonoBehaviour
 
 				if (swipeDelta.magnitude > swipeThreshold)
 				{
-					if (Mathf.Abs(swipeDelta.x) > Mathf.Abs(swipeDelta.y))
-					{
-						if (swipeDelta.x > 0)
-						{
-							TrySwapElements(selectedElement, 1, 0);
-						}
-						else
-						{
-							TrySwapElements(selectedElement, -1, 0);
-						}
-					}
-					else
-					{
-						if (swipeDelta.y > 0)
-						{
-							TrySwapElements(selectedElement, 0, 1);
-						}
-						else
-						{
-							TrySwapElements(selectedElement, 0, -1);
-						}
-					}
+					ClearClickedElement();
+					SwapByDelta(selectedElement, swipeDelta);
 				}
 
 				isSwiping = false;
@@ -516,6 +599,8 @@ public class MatchManager : MonoBehaviour
 	{
 		if (!isReady || cntAnimating > 0)
 			return;
+
+		ClearClickedElement();
 
 		Tile tile = element.GetComponent<Tile>();
 		if (tile == null)
@@ -956,6 +1041,7 @@ public class MatchManager : MonoBehaviour
 
 	public void RefreshTiles()
 	{
+		ClearClickedElement();
 		for (int x = 0; x < gridSize; x++)
 		{
 			for (int y = 0; y < gridSize; y++)
@@ -1234,6 +1320,10 @@ public class MatchManager : MonoBehaviour
 
 	public void SetCanInteract(bool newCanInteract)
 	{
+		if (!newCanInteract)
+		{
+			ClearClickedElement();
+		}
 		canInteract = newCanInteract;
 		
 		UpdateOverlay();

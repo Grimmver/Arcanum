@@ -73,7 +73,7 @@ public abstract class Item : MonoBehaviour
 
 	private float mouseDownTime;
 	private Vector3 mouseDownPosition;
-	private const float clickThresholdTime = 0.2f;
+	private const float clickThresholdTime = 0.35f;
 	private const float clickThresholdDistance = 0.1f;
 	private bool wasUIOpenOnClick;
 	private bool hasDraggedEnoughToCancelClick;
@@ -109,7 +109,7 @@ public abstract class Item : MonoBehaviour
 		offset = transform.position - new Vector3(lastMouseWorldPos.x, lastMouseWorldPos.y, 0);
 		isDragging = true;
 
-		mouseDownTime = Time.time;
+		mouseDownTime = Time.unscaledTime;
 		mouseDownPosition = lastMouseWorldPos;
 
 		lastSlot = CurrentSlot;
@@ -140,7 +140,7 @@ public abstract class Item : MonoBehaviour
 		targetZRotation = Mathf.Clamp(deltaX * rotationAmount, -rotationAmount, rotationAmount);
 		lastMouseWorldPos = currentMousePos;
 
-		float newZ = Mathf.LerpAngle(transform.eulerAngles.z, targetZRotation, Time.deltaTime * rotationSmoothness);
+		float newZ = Mathf.LerpAngle(transform.eulerAngles.z, targetZRotation, Time.unscaledDeltaTime * rotationSmoothness);
 		transform.rotation = Quaternion.Euler(0, 0, newZ);
 	}
 
@@ -153,7 +153,7 @@ public abstract class Item : MonoBehaviour
 		transform.rotation = Quaternion.identity;
 
 		Vector3 currentMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-		float heldDuration = Time.time - mouseDownTime;
+		float heldDuration = Time.unscaledTime - mouseDownTime;
 		float movedDistance = Vector3.Distance(currentMousePos, mouseDownPosition);
 
 		if (heldDuration <= clickThresholdTime && !hasDraggedEnoughToCancelClick)

@@ -27,6 +27,7 @@ public class SceneLoader : MonoBehaviour
 
 	private IEnumerator LoadSceneAsync(string sceneName)
 	{
+		Time.timeScale = 1f;
 		LoadingCanvas.Instance?.Open(true);
 
 		AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName);
